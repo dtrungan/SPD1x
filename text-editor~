@@ -1,0 +1,62 @@
+;; The first three lines of this file were inserted by DrRacket. They record metadata
+;; about the language level of this file in a form that our tools can easily process.
+#reader(lib "htdp-beginner-reader.ss" "lang")((modname text-editor) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f () #t)))
+;; TextEditor is (make-texteditor String Number String)
+;; interp: text (current line), cursor (position in text, 0-based), mode ("normal" or "insert")
+(define-struct texteditor (text cursor mode))
+
+;; Sample initial state
+(define INIT
+  (make-texteditor "" 0 "normal"))
+
+;; TEMPLATE
+;; texteditor -> World
+;; Purpose: Render the current text editor state as an image.
+(define (render te)
+  (place-image
+   (text (te-text te) 24 'black)
+   10
+   30
+   (empty-scene 400 60)))
+
+;; World → World
+;; Purpose: Update the editor state on a key event.
+(define (on-key te ke)
+  (cond
+    [(string=? (te-mode te) "normal")
+     (cond
+       [(string=? ke "h") (make-texteditor (te-text te) (max 0 (- (te-cursor te) 1)) "normal")]
+       [(string=? ke "l") (make-texteditor (te-text te) (min (string-length (te-text te)) (+ (te-cursor te) 1)) "normal")]
+       [(string=? ke "i") (make-texteditor (te-text te) (te-cursor te) "insert")]
+       [else te])]
+    [(string=? (te-mode te) "insert")
+     (cond
+       [(string=? ke "escape") (make-texteditor (te-text te) (te-cursor te) "normal")]
+       [(string=? ke "backspace")
+        (if (> (te-cursor te) 0)
+            (let* ([pos (- (te-cursor te) 1)]
+                   [new-text (string-append (substring (te-text te) 0 pos)
+                                            (substring (te-text te) (te-cursor te) (string-length (te-text te))))])
+              (make-texteditor new-text pos "insert"))
+            te)]
+       [else
+        ;; Insert any normal character key
+        (if (and (= (string-length ke) 1)
+                 (char-alphabetic? (string-ref ke 0)))
+            (let* ([pos (te-cursor te)]
+                   [new-text (string-append (substring (te-text te) 0 pos)
+                                            ke
+                                            (substring (te-text te) pos (string-length (te-text te))))])
+              (make-texteditor new-text (+ pos 1) "insert"))
+            te)])])
+  )
+
+;; World -> World
+;; Purpose: No change on tick (can be extended later)
+(define (on-tick te) te)
+
+;; Main
+(big-bang INIT
+          (on-key on-key)
+          (on-tick on-tick)
+          (to-draw render))
